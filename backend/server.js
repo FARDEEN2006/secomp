@@ -26,7 +26,8 @@ const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
   /^http:\/\/localhost:\d+$/,
   /^http:\/\/127\.0\.0\.1:\d+$/,
-  'https://yourdomain.vercel.app' // Replace with your Vercel domain
+  'https://secomp-pink.vercel.app',
+  'https://secomp-ddpot9a9j-fardeen2006s-projects.vercel.app'
 ];
 
 const corsOptions = {
