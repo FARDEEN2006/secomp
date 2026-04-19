@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - College Marketplace</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 1rem;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-size: 1.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #667eea;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: background-color 0.3s;
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            background-color: #5568d3;
+        }
+
+        .error {
+            background-color: #fee;
+            color: #ef4444;
+            border: 1px solid #ef4444;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            text-align: center;
+        }
+
+        .success {
+            background-color: #ecfdf5;
+            color: #10b981;
+            border: 1px solid #10b981;
+            padding: 1rem;
+            border-radius: 0.375rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            text-align: center;
+        }
+
+        .toggle-form {
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .toggle-form a {
+            color: #667eea;
+            cursor: pointer;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .toggle-form a:hover {
+            text-decoration: underline;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            color: #667eea;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>📱 College Marketplace</h1>
+        <p class="subtitle">Buy & Sell Used Items</p>
+
+        <!-- Error Message -->
+        <div id="errorMsg" class="error"></div>
+
+        <!-- Success Message -->
+        <div id="successMsg" class="success"></div>
+
+        <!-- LOGIN FORM -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="loginEmail">Email Address</label>
+                <input 
+                    type="email" 
+                    id="loginEmail" 
+                    placeholder="student@college.edu" 
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="loginPassword">Password</label>
+                <input 
+                    type="password" 
+                    id="loginPassword" 
+                    placeholder="Enter your password" 
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn-submit">Sign In</button>
+            <div class="loading" id="loadingLogin">⏳ Signing in...</div>
+        </form>
+
+        <!-- REGISTRATION FORM (Hidden by default) -->
+        <form id="registerForm" style="display: none;">
+            <div class="form-group">
+                <label for="registerEmail">Email Address</label>
+                <input 
+                    type="email" 
+                    id="registerEmail" 
+                    placeholder="student@college.edu" 
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="registerPassword">Password</label>
+                <input 
+                    type="password" 
+                    id="registerPassword" 
+                    placeholder="Enter a strong password" 
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="registerPhone">Phone Number (for WhatsApp)</label>
+                <input 
+                    type="tel" 
+                    id="registerPhone" 
+                    placeholder="919876543210 (with country code)"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="btn-submit">Create Account</button>
+            <div class="loading" id="loadingRegister">⏳ Creating account...</div>
+        </form>
+
+        <!-- Toggle Between Login/Register -->
+        <div class="toggle-form">
+            <span id="toggleText">Don't have an account? <a id="toggleLink">Sign up here</a></span>
+        </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const API_BASE_URL = window.APP_CONFIG?.API_BASE_URL || 'http://localhost:5000/api';
+        const TOKEN_KEY = 'marketplace_token';
+        const USER_KEY = 'marketplace_user';
+
+        // ============================================
+        // FORM HANDLING
+        // ============================================
+
+        let isLoginMode = true;
+
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const toggleLink = document.getElementById('toggleLink');
+        const toggleText = document.getElementById('toggleText');
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+
+        // Toggle between login and registration
+        toggleLink.addEventListener('click', () => {
+            isLoginMode = !isLoginMode;
+
+            if (isLoginMode) {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                toggleText.innerHTML = `Don't have an account? <a id="toggleLink">Sign up here</a>`;
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                toggleText.innerHTML = `Already have an account? <a id="toggleLink">Sign in here</a>`;
+            }
+
+            // Re-attach event listener
+            document.getElementById('toggleLink').addEventListener('click', () => {
+                arguments.callee.call(this);
+            });
+
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+        });
+
+        // ============================================
+        // LOGIN
+        // ============================================
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            console.log('🔐 Attempting login...');
+            showLoading('loadingLogin', true);
+            errorMsg.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Login failed');
+                }
+
+                // Save token and user info
+                localStorage.setItem(TOKEN_KEY, data.token);
+                localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+                console.log('✅ Login successful');
+                showSuccess('Welcome! Redirecting...');
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+
+            } catch (error) {
+                console.error('❌ Login error:', error);
+                showError(error.message);
+            } finally {
+                showLoading('loadingLogin', false);
+            }
+        });
+
+        // ============================================
+        // REGISTRATION
+        // ============================================
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const phone_number = document.getElementById('registerPhone').value;
+
+            console.log('👤 Creating new account...');
+            showLoading('loadingRegister', true);
+            errorMsg.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, phone_number })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Registration failed');
+                }
+
+                // Save token and user info
+                localStorage.setItem(TOKEN_KEY, data.token);
+                localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+
+                console.log('✅ Account created successfully');
+                showSuccess('Account created! Redirecting...');
+
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 1500);
+
+            } catch (error) {
+                console.error('❌ Registration error:', error);
+                showError(error.message);
+            } finally {
+                showLoading('loadingRegister', false);
+            }
+        });
+
+        // ============================================
+        // HELPER FUNCTIONS
+        // ============================================
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.style.display = 'block';
+        }
+
+        function showSuccess(message) {
+            successMsg.textContent = message;
+            successMsg.style.display = 'block';
+        }
+
+        function showLoading(id, show) {
+            document.getElementById(id).style.display = show ? 'block' : 'none';
+        }
+
+        // ============================================
+        // CHECK IF ALREADY LOGGED IN
+        // ============================================
+
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token) {
+            console.log('✅ User already logged in, redirecting...');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

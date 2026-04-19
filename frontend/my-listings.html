@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Listings - College Marketplace</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- NAVIGATION BAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">📱 College Marketplace</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="my-listings.html" class="nav-link active">My Listings</a>
+                <a href="settings.html" class="nav-link">Settings</a>
+                <a href="admin.html" class="nav-link admin-only">Admin Panel</a>
+                <a href="#" id="logoutBtn" class="nav-link logout-btn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="container">
+        <!-- HEADER SECTION -->
+        <section class="header">
+            <h2>My Listings</h2>
+            <p>Manage the products you have listed for sale.</p>
+            <button id="newListingBtn" class="btn-primary">+ Post New Listing</button>
+        </section>
+
+        <!-- MY PRODUCTS GRID -->
+        <section class="products-section">
+            <div id="myListingsContainer" class="products-grid">
+                <!-- Products will be loaded here dynamically -->
+                <div class="loading">Loading your listings...</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>&copy; 2024 College Marketplace. Made for students, by students.</p>
+    </footer>
+
+    <!-- JavaScript -->
+    <script src="config.js"></script>
+    <script>
+        // ============================================
+        // CONFIGURATION
+        // ============================================
+        const API_BASE_URL = window.APP_CONFIG?.API_BASE_URL || 'http://localhost:5000/api';
+        const TOKEN_KEY = 'marketplace_token';
+        const USER_KEY = 'marketplace_user';
+
+        // ============================================
+        // PAGE INITIALIZATION
+        // ============================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 My Listings page loaded');
+
+            // Check if user is logged in
+            checkAuthentication();
+
+            // Fetch user's products
+            fetchMyListings();
+
+            // Attach event listeners
+            attachEventListeners();
+
+            // Update UI based on auth status
+            updateAuthUI();
+        });
+
+        // ============================================
+        // FETCH USER'S PRODUCTS
+        // ============================================
+
+        /**
+         * Fetch products listed by the current logged-in user
+         * GET /api/products/me (requires JWT token)
+         */
+        async function fetchMyListings() {
+            console.log('📦 Fetching my listings...');
+            
+            const container = document.getElementById('myListingsContainer');
+            const token = localStorage.getItem(TOKEN_KEY);
+
+            if (!token) {
+                container.innerHTML = `
+                    <div class="error">🔐 You must be logged in to view your listings.</div>
+                `;
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/products/me`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.status === 401) {
+                    throw new Error('Session expired. Please log in again.');
+                }
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                const products = await response.json();
+                console.log(`✅ Loaded ${products.length} of your listings`);
+
+                container.innerHTML = ''; // Clear loading state
+
+                if (products.length === 0) {
+                    container.innerHTML = `
+                        <div class="error" style="background-color: #f0f9ff; border-color: #3b82f6; color: #3b82f6;">
+                            📭 You haven't listed any products yet. 
+                            <a href="#" onclick="window.location.href='create-listing.html'" style="text-decoration: underline;">
+                                Create your first listing
+                            </a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Render each product with edit/delete options
+                products.forEach(product => {
+                    const productCard = createMyProductCard(product);
+                    container.appendChild(productCard);
+                });
+
+            } catch (error) {
+                console.error('❌ Error fetching listings:', error);
+                container.innerHTML = `
+                    <div class="error">
+                        ⚠️ ${error.message}. <a href="login.html">Sign in again</a>
+                    </div>
+                `;
+            }
+        }
+
+        // ============================================
+        // CREATE PRODUCT CARD WITH DELETE OPTIONS
+        // ============================================
+
+        /**
+         * Create a product card with edit and delete buttons
+         */
+        function createMyProductCard(product) {
+            const card = document.createElement('div');
+            card.className = 'product-card';
+
+            const formattedPrice = new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR'
+            }).format(product.price);
+
+            const createdDate = new Date(product.created_at).toLocaleDateString();
+            const imageHtml = getProductImageHtml(product.image_url);
+
+            card.innerHTML = `
+                ${imageHtml}
+                <div class="product-body">
+                    <h3 class="product-title">${escapeHTML(product.title)}</h3>
+                    <p class="product-description">${escapeHTML(product.description || 'No description')}</p>
+                    <p style="color: #6b7280; font-size: 0.8rem; margin-top: auto;">Posted on ${createdDate}</p>
+
+                    <div class="product-footer">
+                        <span class="product-price">${formattedPrice}</span>
+                        <div class="product-actions">
+                            <button
+                                class="btn-secondary btn-small"
+                                onclick="editProduct(${product.id}, '${escapeJS(product.title)}', '${escapeJS(product.description || '')}', ${Number(product.price)})"
+                            >
+                                ✏️ Edit
+                            </button>
+                            <button 
+                                class="btn-danger btn-small" 
+                                onclick="deleteProduct(${product.id}, '${escapeJS(product.title)}')"
+                            >
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        function getProductImageHtml(imageUrl) {
+            const safeImageUrl = getSafeImageUrl(imageUrl);
+            if (!safeImageUrl) {
+                return '<div class="product-image">🛍️</div>';
+            }
+
+            return `<img class="product-image product-image-real" src="${safeImageUrl}" alt="Product image" />`;
+        }
+
+        function getSafeImageUrl(value) {
+            if (!value || typeof value !== 'string') {
+                return '';
+            }
+
+            const trimmed = value.trim();
+            if (trimmed.startsWith('data:image/')) {
+                return trimmed;
+            }
+
+            return '';
+        }
+
+        // ============================================
+        // EDIT PRODUCT
+        // ============================================
+
+        /**
+         * Edit a product listing owned by the current user.
+         * Uses prompt dialogs to keep the UI simple.
+         */
+        async function editProduct(productId, currentTitle, currentDescription, currentPrice) {
+            const newTitle = prompt('Edit title:', currentTitle);
+            if (newTitle === null) return;
+
+            const newDescription = prompt('Edit description:', currentDescription || '');
+            if (newDescription === null) return;
+
+            const newPriceInput = prompt('Edit price (INR):', String(currentPrice));
+            if (newPriceInput === null) return;
+
+            const newPrice = Number(newPriceInput);
+            if (Number.isNaN(newPrice) || newPrice < 0) {
+                alert('Please enter a valid positive price.');
+                return;
+            }
+
+            const token = localStorage.getItem(TOKEN_KEY);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: newTitle.trim(),
+                        description: newDescription.trim(),
+                        price: newPrice
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to update product');
+                }
+
+                alert('Product updated successfully!');
+                fetchMyListings();
+            } catch (error) {
+                alert('Failed to update product: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // DELETE PRODUCT
+        // ============================================
+
+        /**
+         * Delete a product listing
+         * The user can only delete their own products
+         */
+        async function deleteProduct(productId, title) {
+            if (!confirm(`Are you sure you want to delete "${title}"?`)) {
+                return;
+            }
+
+            console.log(`🗑️ Deleting product ${productId}...`);
+            const token = localStorage.getItem(TOKEN_KEY);
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/products/${productId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to delete product');
+                }
+
+                console.log('✅ Product deleted');
+                alert('Product deleted successfully!');
+
+                // Refresh the listings
+                fetchMyListings();
+
+            } catch (error) {
+                console.error('❌ Delete error:', error);
+                alert('Failed to delete product: ' + error.message);
+            }
+        }
+
+        // ============================================
+        // AUTHENTICATION CHECKS
+        // ============================================
+
+        function checkAuthentication() {
+            const token = localStorage.getItem(TOKEN_KEY);
+            const user = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
+
+            if (!token || !user.id) {
+                console.log('❌ Not authenticated');
+                alert('Please log in to view your listings.');
+                window.location.href = 'login.html';
+            }
+        }
+
+        function updateAuthUI() {
+            const user = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const adminLink = document.querySelector('.admin-only');
+
+            if (logoutBtn) {
+                logoutBtn.addEventListener('click', logout);
+            }
+
+            if (adminLink && user.isAdmin) {
+                adminLink.style.display = 'block';
+            } else if (adminLink) {
+                adminLink.style.display = 'none';
+            }
+        }
+
+        function logout() {
+            console.log('👋 Logging out...');
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+            alert('You have been logged out.');
+            window.location.href = 'login.html';
+        }
+
+        // ============================================
+        // EVENT LISTENERS
+        // ============================================
+
+        function attachEventListeners() {
+            const newListingBtn = document.getElementById('newListingBtn');
+            if (newListingBtn) {
+                newListingBtn.addEventListener('click', () => {
+                    window.location.href = 'create-listing.html';
+                });
+            }
+        }
+
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+
+        function escapeHTML(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function escapeJS(text) {
+            if (!text) return '';
+            return text
+                .replace(/\\/g, '\\\\')
+                .replace(/'/g, "\\'")
+                .replace(/"/g, '\\"')
+                .replace(/\n/g, '\\n');
+        }
+    </script>
+</body>
+</html>

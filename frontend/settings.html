@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings - College Marketplace</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+        .settings-wrap {
+            max-width: 700px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        .field {
+            margin-bottom: 1rem;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .field input {
+            width: 100%;
+            padding: 0.7rem;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .msg {
+            margin-top: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .msg.error {
+            color: #b91c1c;
+        }
+
+        .msg.success {
+            color: #047857;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">College Marketplace</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="my-listings.html" class="nav-link">My Listings</a>
+                <a href="settings.html" class="nav-link active">Settings</a>
+                <a href="admin.html" class="nav-link admin-only">Admin Panel</a>
+                <a href="#" id="logoutBtn" class="nav-link logout-btn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container">
+        <section class="header">
+            <h2>Account Settings</h2>
+            <p>Update your profile information used across the marketplace.</p>
+        </section>
+
+        <section class="settings-wrap">
+            <form id="settingsForm">
+                <div class="field">
+                    <label for="email">Email</label>
+                    <input id="email" type="email" required />
+                </div>
+
+                <div class="field">
+                    <label for="phoneNumber">Phone Number (WhatsApp)</label>
+                    <input id="phoneNumber" type="tel" placeholder="919876543210" />
+                </div>
+
+                <button class="btn-primary" type="submit">Save Changes</button>
+                <p id="settingsMsg" class="msg" aria-live="polite"></p>
+            </form>
+        </section>
+    </main>
+
+    <script src="config.js"></script>
+    <script>
+        const API_BASE_URL = window.APP_CONFIG?.API_BASE_URL || 'http://localhost:5000/api';
+        const TOKEN_KEY = 'marketplace_token';
+        const USER_KEY = 'marketplace_user';
+
+        const form = document.getElementById('settingsForm');
+        const msg = document.getElementById('settingsMsg');
+        const logoutBtn = document.getElementById('logoutBtn');
+        const adminLink = document.querySelector('.admin-only');
+
+        function setMessage(text, type) {
+            msg.textContent = text;
+            msg.className = `msg ${type}`;
+        }
+
+        function getTokenOrRedirect() {
+            const token = localStorage.getItem(TOKEN_KEY);
+            if (!token) {
+                window.location.href = 'login.html';
+                return null;
+            }
+            return token;
+        }
+
+        function updateNavByRole() {
+            const user = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
+            if (adminLink && !user.isAdmin) {
+                adminLink.style.display = 'none';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem(TOKEN_KEY);
+            localStorage.removeItem(USER_KEY);
+            window.location.href = 'login.html';
+        }
+
+        async function loadProfile() {
+            const token = getTokenOrRedirect();
+            if (!token) return;
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to load profile');
+                }
+
+                document.getElementById('email').value = data.email || '';
+                document.getElementById('phoneNumber').value = data.phone_number || '';
+            } catch (error) {
+                setMessage(error.message, 'error');
+            }
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const token = getTokenOrRedirect();
+            if (!token) return;
+
+            const email = document.getElementById('email').value.trim();
+            const phone_number = document.getElementById('phoneNumber').value.trim();
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/me`, {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, phone_number })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to update profile');
+                }
+
+                const existingUser = JSON.parse(localStorage.getItem(USER_KEY) || '{}');
+                localStorage.setItem(USER_KEY, JSON.stringify({
+                    ...existingUser,
+                    email: data.user.email,
+                    phoneNumber: data.user.phone_number,
+                    isAdmin: data.user.is_admin
+                }));
+
+                setMessage('Profile updated successfully.', 'success');
+            } catch (error) {
+                setMessage(error.message, 'error');
+            }
+        });
+
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', logout);
+        }
+
+        updateNavByRole();
+        loadProfile();
+    </script>
+</body>
+</html>

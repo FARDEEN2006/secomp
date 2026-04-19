@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Marketplace - Buy & Sell Used Items</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- NAVIGATION BAR -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="logo">📱 College Marketplace</h1>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link active">Home</a>
+                <a href="my-listings.html" class="nav-link">My Listings</a>
+                <a href="settings.html" class="nav-link">Settings</a>
+                <a href="admin.html" class="nav-link admin-only">Admin Panel</a>
+                <a href="#" id="logoutBtn" class="nav-link logout-btn">Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="container">
+        <!-- HEADER SECTION -->
+        <section class="header">
+            <h2>Browse Available Products</h2>
+            <p>Find great deals on textbooks, laptops, furniture, and more from college students.</p>
+            <button id="newListingBtn" class="btn-primary">+ Post New Listing</button>
+        </section>
+
+        <!-- PRODUCTS GRID -->
+        <section class="products-section">
+            <div id="productsContainer" class="products-grid">
+                <!-- Products will be loaded here dynamically via JavaScript -->
+                <div class="loading">Loading products...</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <p>&copy; 2024 College Marketplace. Made for students, by students.</p>
+    </footer>
+
+    <!-- PRODUCT MODAL (for detailed view) -->
+    <div id="productModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Files -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
